@@ -18,10 +18,15 @@ enum LitStatus
 template<typename LitVal>
 struct Lit
 {
-	LitStatus status;
 	bool simpleVal;
+        const ClauseState * clauseState;
 	LitVal val;
 	std::vector<int32_t> clauses;
+        
+        bool isSet() const
+        {
+            return clauseState != nullptr;
+        }
 };
 
 

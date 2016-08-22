@@ -8,15 +8,9 @@
 #ifndef CLAUSE_HPP_
 #define CLAUSE_HPP_
 
-
-class Clause {
-public:
-
-
-private:
-	bool isActive = false;
-	std::vector<int32_t> _lits;
-
+struct Clause
+    ClauseState * clauseState;
+    std::vector<int32_t> lits;
 };
 
 

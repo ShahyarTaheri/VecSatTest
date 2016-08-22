@@ -94,12 +94,12 @@ public:
 
 	constexpr size_t maxNumSchroedinger()
 	{
-		return n*base_vec::size();
+		return std::log2(n*base_vec::size());
 	}
 
 private:
 	base_vec * _vec;
-
+        
 
 };
 

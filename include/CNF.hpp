@@ -29,6 +29,12 @@ public:
 	CNF(const std::string & file) {
 
 	}
+	
+	CNF(CNF<n,base_vec> && in)
+        {
+            std::swap(in._clauses,_clauses);
+            std::swap(in._lits,_lits);
+        }
 
 	size_t numClauses() const
 	{
@@ -39,6 +45,16 @@ public:
 	{
 		return _lits.size();
 	}
+	
+	Clause & getClause(const size_t & num)
+        {
+            return _clauses[num];
+        }
+        
+        LitVector & getLit(const size_t & num)
+        {
+            return _lits[num];
+        }
 
 
 
