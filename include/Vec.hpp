@@ -9,6 +9,7 @@
 #define VEC_HPP_
 
 #include <immintrin.h>
+#include <limits>
 
 class Vec {
 public:
@@ -73,20 +74,45 @@ public:
 		return orOp(in).notOp();
 	}
 
-	static __m256d zero() {
-		return _mm256_set_pd(0, 0, 0, 0); //TODO
+	static __m256d slowZero() {
+            __m256d res;
+            uint64_t * p = reinterpret_cast<int64_t *>(&res);
+            uint64_t nullv = 0;
+            for(size_t i=0;i<sizeof(__m256d)/sizeof(uint64_t);++i)
+                p[i] = nullv;
+            return res;
 	}
-	static __m256d one() {
-		return _mm256_set_pd(1, 1, 1, 1); //TODO
+	static __m256d slowOne() {
+            __m256d res;
+            uint64_t * p = reinterpret_cast<int64_t *>(&res);
+            uint64_t eins = std::numeric_limits<uint64_t>::max();
+            for(size_t i=0;i<sizeof(__m256d)/sizeof(uint64_t);++i)
+                p[i] = eins;
+            return res;
 	}
+	
+	static const __m256d & zero() {
+            return zeroVec;
+        }
+	
+	static const __m256d & one() {
+            return oneVec;
+        }
 
 	static size_t size()
 	{
-		return 256u;
+            return 256u;
 	}
 
 private:
 	__m256d _m;
+        
+        static const __m256d zeroVec;
+        static const __m256d oneVec;
 };
+
+const __m256d Vec::zeroVec = Vec::slowZero();
+const __m256d Vec::zeroVec = Vec::slowOne();
+
 
 #endif /* VEC_HPP_ */

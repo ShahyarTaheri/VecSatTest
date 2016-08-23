@@ -122,7 +122,7 @@ private:
         void setLits()
         {
             for(size_t i=0;i<_newSetLits.size();++i)
-                _cnf.getLit(_newSetLits[i]).assignSchroedinger(i);
+                _cnf.getLit(_newSetLits[i]) = LitVector::assignSchroedinger(i);
         }
         
         /**

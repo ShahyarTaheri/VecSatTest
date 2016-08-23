@@ -94,30 +94,70 @@ public:
 
 	static size_t maxNumSchroedinger()
 	{
-		return std::log2(n*base_vec::size());
+            return _numSchroedinger;
 	}
+	
+	static size_t slowMaxNumSchroedinger()
+        {
+            return std::log2(n*base_vec::size());
+        }
 	
 	static const LitVec<n,base_vec> & one()
         {
-            return oneVec;
+            return _oneVec;
         }
         
         static const LitVec<n,base_vec> & zero()
         {
-            return zeroVec;
+            return _zeroVec;
+        }
+        
+        static const LitVec<n,base_vec> slowCreateConstVec(const bool & v)
+        {
+            LitVec<n,base_vec> res(false);
+            const base_vec & a = ((v) ? base_vec::zero() : base_vec::one());
+            for(size_t i=0;i<n;++i)
+            {
+                _vec[i] = a;
+            }
+            return res;
+        }
+        
+        static const LitVec<n,base_vec> & assignSchroedinger(const size_t & index)
+        {
+            return _schroedingerArray[index];
+        }
+        
+        static std::shared_ptr<const LitVec<n, base_vec> *> createSchroedMemory()
+        {
+            LitVec<n, base_vec> * res = new LitVec<n, base_vec>[_numSchroedinger];
+            for(size_t i=0;i<_numSchroedinger;++i)
+                res[i]._vec = new base_vec[n];
+            
+            //TODO 00001111, 0011001100, 1010101010 ... größer bitte
+            return std::shared_ptr<const LitVec<n, base_vec> *>(res);
         }
 
 private:
 	base_vec * _vec;
         
-        static const LitVec<n, base_vec> zeroVec;
-        static const LitVec<n, base_vec> oneVec;
+        static const LitVec<n, base_vec> _zeroVec;
+        static const LitVec<n, base_vec> _oneVec;
+        
+        static const size_t _numSchroedinger;
+        static std::shared_ptr<const LitVec<n, base_vec> *> _schroedMemory;
+        static const LitVec<n, base_vec> * _schroedingerArray;
 };
 
 template<size_t n, typename base_vec>
-LitVec<n,base_vec> createConstVec(const bool val)
-{
-    //TODO also do schroedinger set up!!!
-}
+const LitVec<n, base_vec> LitVec<n, base_vec>::_zeroVec = LitVec<n, base_vec>::slowCreateConstVec(false);
+template<size_t n, typename base_vec>
+const LitVec<n, base_vec> LitVec<n, base_vec>::_oneVec = LitVec<n, base_vec>::slowCreateConstVec(true);
+template<size_t n, typename base_vec>
+const size_t LitVec<n, base_vec>::_numSchroedinger = LitVec<n, base_vec>::slowMaxNumSchroedinger();
+template<size_t n, typename base_vec>
+std::shared_ptr<const LitVec<n, base_vec> *> LitVec<n, base_vec>::_schroedMemory = LitVec<n, base_vec>::createSchroedMemory();
+template<size_t n, typename base_vec>
+const LitVec<n, base_vec> * LitVec<n, base_vec>::_schroedingerArray = LitVec<n, base_vec>::_schroedMemory.get();
 
 #endif /* LITVEC_HPP_ */
