@@ -9,6 +9,7 @@
 #define LIT_HPP_
 
 #include "LitVec.hpp"
+#include "ClauseState.hpp"
 
 enum LitStatus
 {
@@ -18,14 +19,26 @@ enum LitStatus
 template<typename LitVal>
 struct Lit
 {
-	bool simpleVal;
-        const ClauseState * clauseState;
+	bool simpleVal = false;
+        bool touched = false;
+        short neg = 0;
+        short pos = 0;
+        const ClauseState * clauseState = nullptr;
 	LitVal val;
 	std::vector<int32_t> clauses;
         
         bool isSet() const
         {
             return clauseState != nullptr;
+        }
+        
+        void unset()
+        {
+            simpleVal = false;
+            touched = false;
+            neg = 0;
+            pos = 0;
+            clauseState = nullptr;
         }
 };
 

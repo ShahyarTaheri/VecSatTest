@@ -8,9 +8,21 @@
 #ifndef CLAUSE_HPP_
 #define CLAUSE_HPP_
 
+#include <vector>
+
+#include "ClauseState.hpp"
+
 struct Clause
-    ClauseState * clauseState;
+{
+    ClauseState * clauseState = nullptr;
+    bool touched = false;
     std::vector<int32_t> lits;
+    
+    void unset()
+    {
+        touched = false;
+        clauseState = nullptr;
+    }
 };
 
 

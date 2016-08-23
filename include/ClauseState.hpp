@@ -7,6 +7,6 @@ struct ClauseState
     uint32_t posClause;
         
     uint32_t posInVec;
-}
+};
 
 #endif

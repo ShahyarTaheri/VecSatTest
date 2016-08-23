@@ -92,15 +92,32 @@ public:
 		return _vec == nullptr;
 	}
 
-	constexpr size_t maxNumSchroedinger()
+	static size_t maxNumSchroedinger()
 	{
 		return std::log2(n*base_vec::size());
 	}
+	
+	static const LitVec<n,base_vec> & one()
+        {
+            return oneVec;
+        }
+        
+        static const LitVec<n,base_vec> & zero()
+        {
+            return zeroVec;
+        }
 
 private:
 	base_vec * _vec;
         
-
+        static const LitVec<n, base_vec> zeroVec;
+        static const LitVec<n, base_vec> oneVec;
 };
+
+template<size_t n, typename base_vec>
+LitVec<n,base_vec> createConstVec(const bool val)
+{
+    //TODO also do schroedinger set up!!!
+}
 
 #endif /* LITVEC_HPP_ */
