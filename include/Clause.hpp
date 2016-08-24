@@ -15,14 +15,7 @@
 struct Clause
 {
     ClauseState * clauseState = nullptr;
-    bool touched = false;
     std::vector<int32_t> lits;
-    
-    void unset()
-    {
-        touched = false;
-        clauseState = nullptr;
-    }
 };
 
 

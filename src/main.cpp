@@ -22,9 +22,9 @@ int main(int argc, char * argv[])
         {
             std::string file(argv[1]);
             CNF<1,Vec> cnf(file);
-            cnf.predictedMemoryUsage();
             return 0;
             CNFSolver<1,Vec> solver(cnf);
+            solver.dumpBytesUsed();
             if(solver.solve())
             {
                 std::cout << "SAT" << std::endl;
