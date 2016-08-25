@@ -23,6 +23,11 @@ private:
 		ClauseState clauseState;
 		LitVector litState;
 
+                BranchToken()
+                {
+                    litState = LitVector(false);
+                }
+                
 		BranchToken(const size_t & numCurLits, const size_t & numCurClauses) :
 				litState(false) {
 			clauseState.posLit = numCurLits;
@@ -33,8 +38,8 @@ private:
 
 public:
 	CNFSolver(CNF<n, base_vec> & cnf) :
-			_cnf(cnf), _posInLitStack(0), _posInClauseStack(0), _posInTokenStack(
-					0), _solutionFound(false) {
+                        _posInLitStack(0), _posInClauseStack(0), _posInTokenStack(
+					0), _numSchroedinger(0), _setSchroedinger(true), _backStep(false), _solutionFound(false), _cnf(cnf) {
 		init();
 	}
 
@@ -84,16 +89,16 @@ private:
 	std::vector<BranchToken> _tokenStack;
 
 	void setUpMemory() {
-		_clauseStack.resize(_cnf.getNumClauses(), 0);
-		_litStack.resize(_cnf.getNumLits(), 0);
+		_clauseStack.resize(_cnf.numClauses(), 0);
+		_litStack.resize(_cnf.numLits(), 0);
 		_tokenStack.resize(
 				std::ceil(
-						((double) _cnf.getNumLits())
+						((double) _cnf.numLits())
 								/ LitVector::maxNumSchroedinger()));
 	}
 
 	void setUpClauseOrder() {
-		for (size_t i = 0; i < _cnf.getNumClauses(); ++i)
+		for (size_t i = 0; i < _cnf.numClauses(); ++i)
 			_clauseStack[i] = i;
 	}
 
@@ -105,8 +110,7 @@ private:
 				if (!isSet[std::abs(litId)]) {
 					isSet[std::abs(litId)] = true;
 					_litStack[_posInLitStack++] = std::abs(litId);
-					_cnf.getLit(litId)->clauseState =
-							&_tokenStack[_posInTokenStack];
+					_cnf.getLit(litId).clauseState = &_tokenStack[_posInTokenStack].clauseState;
 					if (counter % LitVector::maxNumSchroedinger() == 0)
 						++_posInTokenStack;
 				}
@@ -131,7 +135,7 @@ private:
 		_backStep = false;
 		while (_tokenStack[_posInTokenStack].clauseState.posInVec
 				< LitVector::size()
-				&& !_tokenStack[_posInTokenStack].litState[++_tokenStack[_posInTokenStack].clauseState.posInVec])
+				&& !_tokenStack[_posInTokenStack].litState.get(++_tokenStack[_posInTokenStack].clauseState.posInVec))
 			;
 		if (_tokenStack[_posInTokenStack].clauseState.posInVec
 				< LitVector::size()) // choose new line from schroedinger setting of this token
@@ -209,13 +213,13 @@ void popToken() {
 /**
  * Returns the LitVector of the given lit. If a new assignment has be done, out will be incremented
  */
-const LitVector & getValueOfLitSchroedingerAssign(const int32_t & in,
+const LitVector getValueOfLitSchroedingerAssign(const int32_t & in,
 		size_t & out) // TODO code duplication
 		{
 	if (in < 0) {
 		Lit<LitVector> & tmpRef = _cnf.getLit(-in);
 		if (tmpRef.simpleVal)
-			return ((tmpRef.val[tmpRef.clauseState->posInVec] == 0) ?
+			return ((tmpRef.val.get(tmpRef.clauseState->posInVec) == false) ?
 					LitVector::one() : LitVector::zero());
 		else {
 			tmpRef.val = LitVector::schroedinger(out++);
@@ -225,22 +229,22 @@ const LitVector & getValueOfLitSchroedingerAssign(const int32_t & in,
 	} else {
 		Lit<LitVector> & tmpRef = _cnf.getLit(in);
 		if (tmpRef.simpleVal)
-			return ((tmpRef.val[tmpRef.clauseState->posInVec] == 1) ?
+			return ((tmpRef.val.get(tmpRef.clauseState->posInVec) == true) ?
 					LitVector::one() : LitVector::zero());
 		else {
-			tmpRef.val = LitVector::assignSchroedinger(out++);
+			tmpRef.val = LitVector::schroedinger(out++);
 			_litStack[_posInLitStack++] = in;
 			return tmpRef.val;
 		}
 	}
 }
 
-const LitVector & getValueOfLit(const int32_t & in, size_t & out) // TODO code duplication
+const LitVector getValueOfLit(const int32_t & in, size_t & out) // TODO code duplication
 		{
 	if (in < 0) {
 		Lit<LitVector> & tmpRef = _cnf.getLit(-in);
 		if (tmpRef.simpleVal)
-			return ((tmpRef.val[tmpRef.clauseState->posInVec] == 0) ?
+			return ((tmpRef.val.get(tmpRef.clauseState->posInVec) == false) ?
 					LitVector::one() : LitVector::zero());
 		else {
 			_posInLitStack++;
@@ -249,7 +253,7 @@ const LitVector & getValueOfLit(const int32_t & in, size_t & out) // TODO code d
 	} else {
 		Lit<LitVector> & tmpRef = _cnf.getLit(in);
 		if (tmpRef.simpleVal)
-			return ((tmpRef.val[tmpRef.clauseState->posInVec] == 1) ?
+			return ((tmpRef.val.get(tmpRef.clauseState->posInVec) == true) ?
 					LitVector::one() : LitVector::zero());
 		else {
 			_posInLitStack++;

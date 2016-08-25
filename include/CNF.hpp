@@ -66,7 +66,7 @@ public:
 		std::ofstream ofs;
 		ofs.open((_file + ".result").c_str());
 		for (size_t i = 1; i < _lits.size(); ++i)
-			if (_lits[i].val[_lits[i].clauseState->posInVec])
+			if (_lits[i].val.get(_lits[i].clauseState->posInVec))
 				ofs << -i << " ";
 			else
 				ofs << i << " ";
@@ -83,7 +83,6 @@ private:
 		std::ifstream ins;
 		ins.open(_file.c_str());
 		char buffer[_bufferSize];
-		size_t pos;
 		while (ins.good()) {
 			ins.getline(buffer, _bufferSize);
 			if (buffer[0] == 'p')
@@ -91,23 +90,23 @@ private:
 		}
 		std::string tmp(&(buffer[6]));
 		std::stringstream ss(buffer);
-		uint32_t uintTmp;
-		ss >> uintTmp;
-		_lits.resize(uintTmp + 1);
+		int32_t intTmp;
+		ss >> intTmp;
+		_lits.resize(intTmp + 1);
 		ss >> tmp;
-		_clauses.resize(uintTmp);
+		_clauses.resize(intTmp);
 		ss.str("");
 		size_t clauseNum = 0;
 		while (ins.good()) {
-			ins >> uintTmp;
-			if (uintTmp == 0)
+			ins >> intTmp;
+			if (intTmp == 0)
 				++clauseNum;
 			else {
-				_clauses[clauseNum].lits.push_back(uintTmp);
-				if (uintTmp < 0)
-					_lits[-uintTmp].clauses.push_back(-clauseNum);
-				else
-					_lits[uintTmp].clauses.push_back(clauseNum);
+				_clauses[clauseNum].lits.push_back(intTmp);
+// 				if (intTmp < 0)
+// 					_lits[-intTmp].clauses.push_back(-clauseNum);
+// 				else
+// 					_lits[intTmp].clauses.push_back(clauseNum);
 			}
 		}
 		ins.close();
