@@ -9,162 +9,170 @@
 #define VEC_HPP_
 
 #include <immintrin.h>
+#include <emmintrin.h>
+#include <mmintrin.h>
+
+
 #include <limits>
+#include <algorithm>
 
-class Vec {
-public:
-	Vec() {
-            _m = (__m256d*)_mm_malloc(32,32);
-	}
-	
-	Vec(const __m256d & in)
-            :   Vec()
-        {
-            *_m = in;
-        }
-        
-        ~Vec()
-        {
-            if(_m != nullptr)
-            {
-                _mm_free(_m);
-                _m = nullptr;
-            }
-        }
+
+/////////////////////////////////
+////////////// MMX //////////////
+/////////////////////////////////
+
+
+__m64 zeroSimd(const __m64 &)
+{
+    return _mm_set1_pi32(0);
+}
+
+__m64 oneSimd(const __m64 &)
+{
+    return reinterpret_cast<__m64>(_mm_set1_pi32(-1));
+}
+
+void andAssign(__m64 & out, const __m64 & in)
+{
+    out = _mm_and_si64(out, in);    
+}
+
+void orAssign(__m64 & out, const __m64 & in)
+{
+    out = _mm_or_si64(out, in);
+}
+
+void neq(__m64 & out)
+{
+    out = _mm_xor_si64(oneSimd(out), out);
+}
+
+/////////////////////////////////
+////////////// SSE //////////////
+/////////////////////////////////
+
+
+__m128d zeroSimd(const __m128d &)
+{
+    return _mm_setzero_pd();
+}
+
+__m128d oneSimd(const __m128d &)
+{
+    return reinterpret_cast<__m128d>(_mm_set1_epi64x(-1));
+}
+
+void andAssign(__m128d & out, const __m128d & in)
+{
+    out = _mm_and_pd(out, in);    
+}
+
+void orAssign(__m128d & out, const __m128d & in)
+{
+    out = _mm_or_pd(out, in);
+}
+
+void neq(__m128d & out)
+{
+    out = _mm_xor_pd(oneSimd(out), out);
+}
+
+/////////////////////////////////
+////////////// AVX //////////////
+/////////////////////////////////
+
+__m256d zeroSimd(const __m256d &)
+{
+    return _mm256_setzero_pd();
+}
+
+__m256d oneSimd(const __m256d &)
+{
+    return reinterpret_cast<__m256d>(_mm256_set1_epi64x(-1));
+}
+
+void andAssign(__m256d & out, const __m256d & in)
+{
+    out = _mm256_and_pd(out, in);    
+}
+
+void orAssign(__m256d & out, const __m256d & in)
+{
+    out = _mm256_or_pd(out, in);
+}
+
+void neq(__m256d & out)
+{
+    out = _mm256_xor_pd(oneSimd(out), out);
+}
+
+/*
+/////////////////////////////////
+//////////// AVX 512 ////////////
+/////////////////////////////////
+
+__m512d zeroSimd(const __m512d &)
+{
+    return _mm512_setzero_pd();
+}
+
+__m512d oneSimd(const __m512d &)
+{
+    return reinterpret_cast<__m512d>(_mm512_set1_epi64(-1));
+}
+
+void andAssign(__m512d & out, const __m512d & in)
+{
+    out = _mm512_and_pd(out, in);    
+}
+
+void orAssign(__m512d & out, const __m512d & in)
+{
+    out = _mm512_or_pd(out, in);
+}
+
+void neq(__m512d & out)
+{
+    out = _mm512_xor_pd(oneSimd(out), out);
+}
+*/
+/////////////////////////////////
+//////////// Template ///////////
+/////////////////////////////////
+
+
+template<typename simd_type>
+bool getSimd(const simd_type & in, const size_t & index)
+{
+    const uint64_t * p = reinterpret_cast<const uint64_t*>(&in);
+    size_t posArr = index/64;
+    size_t posVec = index%64;
             
+    return (p[posArr] >> posVec) & 1;
+}
 
-	Vec(const Vec & in) : Vec() {
-            *_m = *in._m;
-	}
-	
-	bool operator!=(const Vec & in) const
-        {
-            const uint64_t * p1= reinterpret_cast<const uint64_t*>(_m);
-            const uint64_t * p2= reinterpret_cast<const uint64_t*>(in._m);
-            for(size_t i=0;i<size()/64;++i)
-                if(p1[i] != p2[i])
-                    return true;
-            return false;
-        }
+template<typename simd_type>
+void setSimd(simd_type & in, const size_t & index, const bool & val)
+{
+    uint64_t tval = val;
+    uint64_t * p = reinterpret_cast<uint64_t*>(&in);
+    size_t posArr = index/64;
+    size_t posVec = index%64;
+    p[posArr] ^= (-tval ^ p[posArr]) & (1 << posVec);    
+}
 
-	Vec & operator^=(const Vec & in) {
-		return andOp(in);
-	}
+template<typename simd_type>
+void assign(simd_type & out, const simd_type & in)
+{
+    out = in;
+}
 
-	Vec & operator|=(const Vec & in) {
-		return orOp(in);
-	}
-
-	Vec operator-() const
-	{
-		Vec res(*this);
-		return res.notOp();
-	}
-
-	Vec operator^(const Vec & in) const
-	{
-		Vec res(*this);
-		return res.andOp(in);
-	}
-
-	Vec operator|(const Vec & in) const
-	{
-		Vec res(*this);
-		return res.orOp(in);
-	}
-
-	Vec & andOp(const Vec& in) {
-		*_m = _mm256_and_pd(*_m, *in._m);
-		return *this;
-	}
-
-	Vec & orOp(const Vec& in) {
-		*_m = _mm256_or_pd(*_m, *in._m);
-		return *this;
-	}
-
-	Vec & andNotOp(const Vec& in) {
-		*_m = _mm256_andnot_pd(*_m, *in._m);
-		return *this;
-	}
-
-	Vec & notOp() {
-		*_m = _mm256_xor_pd(*one()._m, *_m);
-		return *this;
-	}
-
-	Vec & orNotOp(const Vec& in) {
-
-		return orOp(in).notOp();
-	}
-	
-	void set(const size_t & index, const bool & val)
-        {
-            setSlow(index,val);
-        }
-	
-	void setSlow(const size_t & index, const bool & val)
-        {
-            uint64_t tval = val;
-            uint64_t * p = reinterpret_cast<uint64_t*>(&_m);
-            size_t posArr = index/64;
-            size_t posVec = index%64;
-            p[posArr] ^= (-tval ^ p[posArr]) & (1 << posVec);
-        }
-        
-        bool get(const size_t & index) const
-        {
-            return getSlow(index);
-        }
-        
-        bool getSlow(const size_t & index) const
-        {
-            const uint64_t * p = reinterpret_cast<const uint64_t*>(&_m);
-            size_t posArr = index/64;
-            size_t posVec = index%64;
-            
-            return (p[posArr] >> posVec) & 1;
-        }
-
-	static Vec slowZero() {
-            __m256d res;
-            uint64_t * p = reinterpret_cast<uint64_t *>(&res);
-            uint64_t nullv = 0;
-            for(size_t i=0;i<sizeof(__m256d)/sizeof(uint64_t);++i)
-                p[i] = nullv;
-            return Vec(res);
-	}
-	static Vec slowOne() {
-            __m256d res;
-            uint64_t * p = reinterpret_cast<uint64_t *>(&res);
-            uint64_t eins = std::numeric_limits<uint64_t>::max();
-            for(size_t i=0;i<sizeof(__m256d)/sizeof(uint64_t);++i)
-                p[i] = eins;
-            return Vec(res);
-	}
-	
-	static const Vec & zero() {
-            return zeroVec;
-        }
-	
-	static const Vec & one() {
-            return oneVec;
-        }
-
-	static size_t size()
-	{
-            return 256u;
-	}
-
-private:
-	__m256d * _m;
-        
-        static const Vec zeroVec;
-        static const Vec oneVec;
-};
-
-const Vec Vec::zeroVec = Vec::slowZero();
-const Vec Vec::oneVec = Vec::slowOne();
-
+template<typename simd_type>
+bool not_equal(const simd_type & in1, const simd_type & in2)
+{
+    return !std::equal(reinterpret_cast<const uint64_t*>(&in1),
+                       reinterpret_cast<const uint64_t*>(&in1)+(sizeof(simd_type)/64),
+                       reinterpret_cast<const uint64_t*>(&in2));
+}
 
 #endif /* VEC_HPP_ */

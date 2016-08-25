@@ -42,26 +42,26 @@ public:
 	
 	bool operator!=(const LitVec<n, base_vec> & in) const {
             for(size_t i=0;i<n;++i)
-                if(_vec[i] != in._vec[i])
+                if(not_equal(_vec[i], in._vec[i]))
                     return true;
             return false;
         }
 
 	LitVec<n, base_vec> & operator =(const LitVec<n, base_vec> & in) {
 		for (size_t i = 0; i < n; ++i)
-			_vec[i] = in._vec[i];
+			assign(_vec[i],in._vec[i]);
 		return *this;
 	}
 
 	LitVec<n, base_vec> & operator ^=(const LitVec<n, base_vec> & in) {
 		for (size_t i = 0; i < n; ++i)
-			_vec[i] ^= in._vec[i];
+			andAssign(_vec[i],in._vec[i]);
 		return *this;
 	}
 
 	LitVec<n, base_vec> & operator |=(const LitVec<n, base_vec> & in) {
 		for (size_t i = 0; i < n; ++i)
-			_vec[i] |= in._vec[i];
+			orAssign(_vec[i], in._vec[i]);
 		return *this;
 	}
 
@@ -80,22 +80,18 @@ public:
 	LitVec<n, base_vec> operator -() const {
 		LitVec<n, base_vec> res(*this);
 		for (size_t i = 0; i < n; ++i)
-			res._vec[i] = -res._vec[i];
+			neq(res._vec[i]);
 		return res;
 	}
 	
 	bool get(const size_t & index) const
 	{
-            return _vec[index/n].get(index%base_vec::size());
+            return getSimd(_vec[index/sizeof(base_vec)],index%sizeof(base_vec));
         }
-
-	bool isEmpty() const {
-		return _vec == nullptr;
-	}
 
 	static size_t size()
 	{
-		return n*base_vec::size();
+		return n*sizeof(base_vec);
 	}
 
 	static size_t maxNumSchroedinger() {
@@ -103,7 +99,7 @@ public:
 	}
 
 	static size_t slowMaxNumSchroedinger() {
-		return std::log2(n * base_vec::size());
+		return std::log2(n * sizeof(base_vec));
 	}
 
 	static const LitVec<n, base_vec> & one() {
@@ -118,16 +114,16 @@ public:
 		LitVec<n, base_vec> res(false);
                 if(v)
                 {
-                    const base_vec & a = base_vec::zero();
+                    const base_vec & a = zeroSimd(res._vec[0]);
                     for (size_t i = 0; i < n; ++i)
-			res._vec[i] = a;
+			assign(res._vec[i],a);
 		
                 }
                 else
                 {
-                    const base_vec & a = base_vec::one();
+                    const base_vec & a = oneSimd(res._vec[0]);
                     for (size_t i = 0; i < n; ++i)
-			res._vec[i] = a;
+			assign(res._vec[i],a);
 		
                 }
 		return res;
@@ -150,7 +146,7 @@ public:
 			bool cur = false;
 			for(size_t i=0;i<size();++i)
 			{
-				res[num]._vec[i%n].set(i%n,cur);
+				set(res[num]._vec[i/n],i%n,cur);
 				if(++counter == changeEvery)
 				{
 					counter = 0;
@@ -169,7 +165,6 @@ private:
 	static const LitVec<n, base_vec> _oneVec;
 
 	static const size_t _numSchroedinger;
-	static std::shared_ptr<const LitVec<n, base_vec>> _schroedMemory;
 	static const LitVec<n, base_vec> * _schroedingerArray;
 };
 
@@ -183,10 +178,6 @@ template<size_t n, typename base_vec>
 const size_t LitVec<n, base_vec>::_numSchroedinger =
 		LitVec<n, base_vec>::slowMaxNumSchroedinger();
 template<size_t n, typename base_vec>
-std::shared_ptr<const LitVec<n, base_vec>> LitVec<n, base_vec>::_schroedMemory =
-		LitVec<n, base_vec>::createSchroedMemory();
-template<size_t n, typename base_vec>
-const LitVec<n, base_vec> * LitVec<n, base_vec>::_schroedingerArray = LitVec<n,
-		base_vec>::_schroedMemory.get();
+const LitVec<n, base_vec> * LitVec<n, base_vec>::_schroedingerArray = nullptr;
 
 #endif /* LITVEC_HPP_ */

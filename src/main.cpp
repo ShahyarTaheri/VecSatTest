@@ -12,6 +12,8 @@
 #include "../include/CNF.hpp"
 #include "../include/CNFSolver.hpp"
 
+typedef __m256d simd_type;
+
 int main(int argc, char * argv[])
 {
         if(argc < 2)
@@ -22,8 +24,8 @@ int main(int argc, char * argv[])
         else
         {
             std::string file(argv[1]);
-            CNF<1,Vec> cnf(file);
-            CNFSolver<1,Vec> solver(cnf);
+            CNF<1,simd_type> cnf(file);
+            CNFSolver<1,simd_type> solver(cnf);
             solver.dumpBytesUsed();
             return 0;
             if(solver.solve())
