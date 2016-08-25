@@ -22,12 +22,12 @@ public:
 	}
 
 	LitVec(const bool & empty) :
-			_vec((empty) ? nullptr : new base_vec[n]) {
+			_vec((empty) ? nullptr : allocateSimd<base_vec>(n)) {
 
 	}
 
 	LitVec(const LitVec<n, base_vec> & in) :
-			_vec(new base_vec[n]) {
+			_vec(allocateSimd<base_vec>(n)) {
 		std::copy(in._vec, in._vec + n, _vec);
 	}
 
@@ -39,23 +39,23 @@ public:
 		if (_vec != nullptr)
 			delete[] _vec;
 	}
-	
+
 	bool operator!=(const LitVec<n, base_vec> & in) const {
-            for(size_t i=0;i<n;++i)
-                if(not_equal(_vec[i], in._vec[i]))
-                    return true;
-            return false;
-        }
+		for (size_t i = 0; i < n; ++i)
+			if (not_equal(_vec[i], in._vec[i]))
+				return true;
+		return false;
+	}
 
 	LitVec<n, base_vec> & operator =(const LitVec<n, base_vec> & in) {
 		for (size_t i = 0; i < n; ++i)
-			assign(_vec[i],in._vec[i]);
+			assign(_vec[i], in._vec[i]);
 		return *this;
 	}
 
 	LitVec<n, base_vec> & operator ^=(const LitVec<n, base_vec> & in) {
 		for (size_t i = 0; i < n; ++i)
-			andAssign(_vec[i],in._vec[i]);
+			andAssign(_vec[i], in._vec[i]);
 		return *this;
 	}
 
@@ -83,15 +83,13 @@ public:
 			neq(res._vec[i]);
 		return res;
 	}
-	
-	bool get(const size_t & index) const
-	{
-            return getSimd(_vec[index/sizeof(base_vec)],index%sizeof(base_vec));
-        }
 
-	static size_t size()
-	{
-		return n*sizeof(base_vec);
+	bool get(const size_t & index) const {
+		return getSimd(_vec[index / sizeof(base_vec)], index % sizeof(base_vec));
+	}
+
+	static size_t size() {
+		return n * sizeof(base_vec);
 	}
 
 	static size_t maxNumSchroedinger() {
@@ -112,25 +110,21 @@ public:
 
 	static const LitVec<n, base_vec> slowCreateConstVec(const bool & v) {
 		LitVec<n, base_vec> res(false);
-                if(v)
-                {
-                    const base_vec & a = zeroSimd(res._vec[0]);
-                    for (size_t i = 0; i < n; ++i)
-			assign(res._vec[i],a);
-		
-                }
-                else
-                {
-                    const base_vec & a = oneSimd(res._vec[0]);
-                    for (size_t i = 0; i < n; ++i)
-			assign(res._vec[i],a);
-		
-                }
+		if (v) {
+			base_vec a = zeroSimd<base_vec>(res._vec[0]);
+			for (size_t i = 0; i < n; ++i)
+				assign(res._vec[i], a);
+
+		} else {
+			base_vec a = oneSimd(res._vec[0]);
+			for (size_t i = 0; i < n; ++i)
+				assign(res._vec[i], a);
+
+		}
 		return res;
 	}
 
-	static const LitVec<n, base_vec> & schroedinger(
-			const size_t & index) {
+	static const LitVec<n, base_vec> & schroedinger(const size_t & index) {
 		return _schroedingerArray[index];
 	}
 
@@ -139,16 +133,13 @@ public:
 		for (size_t i = 0; i < _numSchroedinger; ++i)
 			res[i]._vec = new base_vec[n];
 
-		for(size_t num = 0;num < _numSchroedinger;++num)
-		{
-			size_t changeEvery = std::pow(2,num+1);
+		for (size_t num = 0; num < _numSchroedinger; ++num) {
+			size_t changeEvery = std::pow(2, num + 1);
 			size_t counter = 0;
 			bool cur = false;
-			for(size_t i=0;i<size();++i)
-			{
-				set(res[num]._vec[i/n],i%n,cur);
-				if(++counter == changeEvery)
-				{
+			for (size_t i = 0; i < size(); ++i) {
+				set(res[num]._vec[i / n], i % n, cur);
+				if (++counter == changeEvery) {
 					counter = 0;
 					cur = -cur;
 				}
