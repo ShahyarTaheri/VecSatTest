@@ -11,11 +11,25 @@
 #include "LitVec.hpp"
 #include "ClauseState.hpp"
 
-template<typename LitVal>
-struct Lit {
-	bool simpleVal = false;
-	const ClauseState * clauseState = nullptr;
-	LitVal val;
+struct Lit
+{
+    short memPos = 0;
+    size_t tokenNum;
+    const ClauseState * clauseState;
+
+    Lit()
+            : memPos(0),
+              tokenNum(0),
+              clauseState(nullptr)
+    {
+    }
+
+    Lit(const short & memPos, const size_t & tokenNum, const ClauseState & clauseState)
+            : memPos(memPos),
+              tokenNum(tokenNum),
+              clauseState(&clauseState)
+    {
+    }
 };
 
 #endif /* LIT_HPP_ */

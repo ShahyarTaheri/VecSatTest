@@ -31,7 +31,7 @@ int main(int argc, char * argv[])
             if(solver.solve())
             {
                 std::cout << "SAT" << std::endl;
-                cnf.writeSolution();
+                //cnf.writeSolution();
             }
             else
                 std::cout << "UNSAT" << std::endl;

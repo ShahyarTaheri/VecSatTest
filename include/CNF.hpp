@@ -62,21 +62,10 @@ public:
 		return res;
 	}
 
-	void writeSolution() {
-		std::ofstream ofs;
-		ofs.open((_file + ".result").c_str());
-		for (size_t i = 1; i < _lits.size(); ++i)
-			if (_lits[i].val.get(_lits[i].clauseState->posInVec))
-				ofs << -i << " ";
-			else
-				ofs << i << " ";
-		ofs.close();
-	}
-
 private:
 	std::string _file;
 	std::vector<Clause> _clauses;
-	std::vector<Lit<LitVector>> _lits;
+	std::vector<Lit> _lits;
 	size_t _bufferSize;
 
 	void readFromFile() {
@@ -89,11 +78,11 @@ private:
 				break;
 		}
 		std::string tmp(&(buffer[6]));
-		std::stringstream ss(buffer);
+		std::stringstream ss(tmp);
 		int32_t intTmp;
 		ss >> intTmp;
 		_lits.resize(intTmp + 1);
-		ss >> tmp;
+		ss >> intTmp;
 		_clauses.resize(intTmp);
 		ss.str("");
 		size_t clauseNum = 0;
