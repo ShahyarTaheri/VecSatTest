@@ -13,6 +13,7 @@
 #include "../include/CNFSolver.hpp"
 
 typedef __m256d simd_type;
+#define NUM_VECS 2
 
 int main(int argc, char * argv[])
 {
@@ -23,8 +24,8 @@ int main(int argc, char * argv[])
    } else
    {
       std::string file(argv[1]);
-      CNF<1, simd_type> cnf(file);
-      CNFSolver<1, simd_type> solver(cnf);
+      CNF<NUM_VECS, simd_type> cnf(file);
+      CNFSolver<NUM_VECS, simd_type> solver(cnf);
       solver.dumpBytesUsed();
       if (solver.solve())
       {

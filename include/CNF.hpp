@@ -24,12 +24,12 @@ public:
 	typedef LitVec<n, base_vec> LitVector;
 
 	CNF(const std::string & file) :
-			_file(file), _bufferSize(1024) {
+			_file(file) {
 		readFromFile();
 	}
 
 	CNF(CNF<n, base_vec> && in) :
-			_numLits(0), _bufferSize(0) {
+			_numLits(0) {
 		std::swap(in._clauses, _clauses);
 	}
 
@@ -61,7 +61,7 @@ private:
 	size_t _numLits;
 	std::string _file;
 	std::vector<Clause> _clauses;
-	size_t _bufferSize;
+	static constexpr size_t _bufferSize = 1024;
 
 	void readFromFile() {
 		std::ifstream ins;
@@ -96,5 +96,8 @@ private:
 
 	}
 };
+
+template<size_t n, typename base_vec>
+constexpr size_t CNF<n,base_vec>::_bufferSize;
 
 #endif /* CNF_HPP_ */

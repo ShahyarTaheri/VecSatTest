@@ -13,6 +13,10 @@
 #include <algorithm>
 #include <memory>
 
+constexpr unsigned Log2(unsigned n, unsigned p = 0) {
+    return (n <= 1) ? p : Log2(n / 2, p + 1);
+}
+
 template<size_t n, typename base_vec>
 class LitVec
 {
@@ -100,12 +104,12 @@ class LitVec
 
    static constexpr size_t size()
    {
-      return n * sizeof(base_vec)*8;
+      return _size;
    }
 
    static constexpr size_t maxNumSchroedinger()
    {
-      return std::log2(size());
+      return _numSchroedinger;
    }
 
    static const LitVec<n, base_vec> slowCreateConstVec(const bool & v)
@@ -146,10 +150,13 @@ class LitVec
  private:
    base_vec _vec[n];
 
-   static const LitVec<n, base_vec> _zeroVec;
-   static const LitVec<n, base_vec> _oneVec;
-
-   static const LitVec<n, base_vec> * _schroedingerArray;
+   static constexpr size_t _size = n * sizeof(base_vec)*8;
+   static constexpr size_t _numSchroedinger = Log2(size());
 };
+
+template<size_t n, typename base_vec>
+constexpr size_t LitVec<n,base_vec>::_size;
+template<size_t n, typename base_vec>
+constexpr size_t LitVec<n,base_vec>::_numSchroedinger;
 
 #endif /* LITVEC_HPP_ */

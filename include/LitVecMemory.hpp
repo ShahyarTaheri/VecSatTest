@@ -25,7 +25,7 @@ class LitVecMemory
         initSchroed();
     }
 
-    const LitVec<n, base_vec> & operator[](const uint32_t & index) const
+    const LitVec<n, base_vec> & operator[](const int32_t & index) const
     {
         return _allLitVecs[index + _schroedShift];
     }

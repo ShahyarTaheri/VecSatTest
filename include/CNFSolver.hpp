@@ -10,7 +10,9 @@
 
 #include <vector>
 #include <list>
+#include <map>
 #include <cstdint>
+#include <ctime>
 
 #include "LitVecMemory.hpp"
 
@@ -41,19 +43,26 @@ class CNFSolver
               litState(in.litState)
       {
       }
+
+
    };
 
  public:
    CNFSolver(CNF<n, base_vec> & cnf)
          : _posInTokenStack(0),
            _solutionFound(false),
-           _cnf(&cnf)
+           _cnf(&cnf),
+           _backStep(false),
+           _zeroCounter(0),
+           _lowestBackstepLvl(std::numeric_limits<size_t>::max()),
+           _startTime(0)
    {
       init();
    }
 
    bool solve()
    {
+      _startTime = clock();
       while (solveStep())
       {
       }
@@ -67,6 +76,9 @@ class CNFSolver
       setUpMemory();
       setUpClauseOrder();
       setUpLitOrder();
+      //optimizeClauseOrder();
+      //setUpLitOrder();
+      //optimizeClauseOrder(false);
    }
 
    bool hasSolution() const
@@ -80,7 +92,7 @@ class CNFSolver
       numBytes += (sizeof(BranchToken) + LitVector::size()) * _tokenStack.size();
       numBytes += (sizeof(uint32_t) + sizeof(Clause)) * _clauseStack.size() + _cnf->countNumLitsInClause() * sizeof(int32_t);
       numBytes += sizeof(Lit) * _cnf->numLits();
-      std::cout << "Allocating not less than " << (double)numBytes / (1024 * 1024) << " MB" << std::endl;
+      std::cout << "Allocating not less than " << (double) numBytes / (1024 * 1024) << " MB" << std::endl;
    }
 
  private:
@@ -93,6 +105,11 @@ class CNFSolver
    std::vector<BranchToken> _tokenStack;
 
    LitVecMemory<n, base_vec> _vecMem;
+   bool _backStep;
+
+   size_t _zeroCounter;
+   size_t _lowestBackstepLvl;
+   uint64_t _startTime;
 
    void setUpMemory()
    {
@@ -105,16 +122,21 @@ class CNFSolver
    {
       for (size_t i = 0; i < _cnf->numClauses(); ++i)
          _clauseStack[i] = i;
+
+      //std::srand ( unsigned ( std::time(0) ) );
+      //random_shuffle(_clauseStack.begin(),_clauseStack.end());
    }
 
    void setUpLitOrder()
    {
       size_t counter = 0;
       std::vector<bool> isSet(_cnf->numLits(), false);
+      size_t maxClausesInStep = 0;
+      size_t maxIndex = 0;
       for (size_t i = 0; i < _clauseStack.size(); ++i)
       {
          const Clause & clause = _cnf->getClause(_clauseStack[i]);
-         for (size_t j=0;j<clause.lits.size();++j)
+         for (size_t j = 0; j < clause.lits.size(); ++j)
          {
             const uint32_t & litId = std::abs(clause.lits[j]);
             if (!isSet[litId])
@@ -124,20 +146,38 @@ class CNFSolver
             }
             if (counter == LitVector::maxNumSchroedinger())
             {
-               _tokenStack[++_posInTokenStack] = BranchToken(i+1);
+               if (_posInTokenStack > 0 && maxClausesInStep < i - _tokenStack[_posInTokenStack - 1].clauseState.posClause)
+               {
+                  maxClausesInStep = i - _tokenStack[_posInTokenStack - 1].clauseState.posClause;
+                  maxIndex = _posInTokenStack;
+               }
+               _tokenStack[++_posInTokenStack] = BranchToken(i + 1);
                counter = 0;
             }
          }
       }
+      if (maxClausesInStep < _clauseStack.size() - _tokenStack[_tokenStack.size() - 2].clauseState.posClause)
+      {
+         maxClausesInStep = _clauseStack.size() - _tokenStack[_tokenStack.size() - 2].clauseState.posClause;
+         maxIndex = _tokenStack.size() - 2;
+      }
+      std::cout << "in " << maxIndex << ": need to evaluate " << maxClausesInStep << " clauses" << std::endl;
       _tokenStack.back().clauseState.posClause = _clauseStack.size();
+
       _posInTokenStack = 0;
    }
 
    bool solveStep()
    {
       bool res = true;
-
-      if (evaluateClauses())
+      //if(_zeroCounter > 0)
+      //   return false;
+      if (_zeroCounter % 100000 == 0 && _zeroCounter > 0)
+      {
+         std::cout << "Conflics per sec: " << (_zeroCounter / std::floor((double) (clock() - _startTime) / CLOCKS_PER_SEC)) << std::endl << "lowest backstep: "
+                   << _lowestBackstepLvl << std::endl;
+      }
+      if (!_backStep && evaluateClauses())
       {
          // evaluate true:
          if (!pushToken())
@@ -148,6 +188,7 @@ class CNFSolver
          }
       } else
       {
+         _backStep = false;
          // evaluate false
          if (!shiftLine())  // try get next line of token
          {
@@ -191,7 +232,7 @@ class CNFSolver
       const auto & litVec = _tokenStack[_posInTokenStack].litState;
 
       while (++clauseState.posInVec < LitVector::size() && !litVec.get(clauseState.posInVec))
-         ;  // TODO more sophisticated approach possible O(VecSize) => O(log(VecSize)) => O(1)
+         ++_zeroCounter;  // TODO more sophisticated approach possible O(VecSize) => O(log(VecSize)) => O(1)
 
       if (clauseState.posInVec == LitVector::size())
          return false;
@@ -206,12 +247,14 @@ class CNFSolver
 
    bool popToken()
    {
+      _lowestBackstepLvl = std::min(_lowestBackstepLvl, _posInTokenStack);
       _tokenStack[_posInTokenStack].clauseState.posInVec = 0;
       if (_posInTokenStack == 0)
          return false;
       else
       {
          --_posInTokenStack;
+         _backStep = true;
          return true;
       }
    }
@@ -226,6 +269,43 @@ class CNFSolver
          int32_t index = ((in < 0) ? -tmpRef.memPos : tmpRef.memPos);
          return _vecMem[index];
       }
+   }
+
+   void optimizeClauseOrder(bool optimize = true)
+   {
+      std::vector<std::list<size_t> > clauseNumToTokenNum(_tokenStack.size());
+      size_t numMoves = 0;
+      for (size_t i = 0; i < _tokenStack.size() - 1; ++i)
+      {
+         for (size_t j = _tokenStack[i].clauseState.posClause; j < _tokenStack[i + 1].clauseState.posClause; ++j)
+         {
+            size_t maxToken = 0;
+            for (const int32_t & lit : _cnf->getClause(_clauseStack[j]).lits)
+            {
+               maxToken = std::max(_lits[std::abs(lit)].tokenNum, maxToken);
+            }
+            if (maxToken < i)
+            {
+               ++numMoves;
+            }
+            clauseNumToTokenNum[maxToken].push_back(_clauseStack[j]);
+         }
+
+      }
+      std::cout << "Move " << numMoves << " clauses for optimization" << std::endl;
+      if (optimize)
+      {
+         size_t clauseIt = 0;
+         for (const auto & cList : clauseNumToTokenNum)
+         {
+            for (const auto & clauseId : cList)
+            {
+               _clauseStack[clauseIt++] = clauseId;
+            }
+         }
+      }
+      //else
+      //   exit(0);
    }
 
 };
