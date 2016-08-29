@@ -14,7 +14,7 @@
 
 struct Clause
 {
-    ClauseState * clauseState = nullptr;
+    //ClauseState * clauseState = nullptr;
     std::vector<int32_t> lits;
 };
 

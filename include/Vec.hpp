@@ -231,7 +231,7 @@ template<typename simd_type>
 bool not_equal(const simd_type & in1, const simd_type & in2)
 {
     return !std::equal(reinterpret_cast<const uint64_t*>(&in1),
-                       reinterpret_cast<const uint64_t*>(&in1)+(sizeof(simd_type)/64),
+                       reinterpret_cast<const uint64_t*>(&in1)+(sizeof(simd_type)/8),
                        reinterpret_cast<const uint64_t*>(&in2));
 }
 

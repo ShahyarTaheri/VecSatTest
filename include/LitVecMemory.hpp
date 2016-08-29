@@ -13,9 +13,16 @@ class LitVecMemory
 {
  public:
     LitVecMemory()
-            : _schroedShift(LitVec<n, base_vec>::maxNumSchroedinger() + 3)
+            : _schroedShift(LitVec<n, base_vec>::maxNumSchroedinger() + 2)
     {
         init();
+    }
+
+
+    void init()
+    {
+        initZeroOne();
+        initSchroed();
     }
 
     const LitVec<n, base_vec> & operator[](const uint32_t & index) const
@@ -39,18 +46,12 @@ class LitVecMemory
      * Structure: ar[0] = 0, ar[1] = 1, ar[2] = -schroed[maxNumSchroed] ar[3] = -schroed[maxNumSchroed-1], ....
      *            ar[maxNumSchroed] = schroed[0], ..., ar[2*maxNumSchroed] = schroed[maxNumSchroed]
      */
-    LitVec<n, base_vec> _allLitVecs[LitVec<n, base_vec>::maxNumSchroedinger() + 2];
-
-    void init()
-    {
-        initZeroOne();
-        initSchroed();
-    }
+    LitVec<n, base_vec> _allLitVecs[2*LitVec<n, base_vec>::maxNumSchroedinger() + 3];
 
     void initZeroOne()
     {
-        _allLitVecs[0] = LitVec<n, base_vec>::slowCreateConstVec(false);
-        _allLitVecs[1] = LitVec<n, base_vec>::slowCreateConstVec(true);
+        _allLitVecs[1] = LitVec<n, base_vec>::slowCreateConstVec(false);
+        _allLitVecs[0] = LitVec<n, base_vec>::slowCreateConstVec(true);
     }
 
     void initSchroed()

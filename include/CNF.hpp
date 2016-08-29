@@ -17,10 +17,6 @@
 #include "LitVec.hpp"
 #include "Clause.hpp"
 
-enum Sign {
-	IDENT, NEGAT
-};
-
 template<size_t n, typename base_vec>
 class CNF {
 public:
@@ -33,9 +29,8 @@ public:
 	}
 
 	CNF(CNF<n, base_vec> && in) :
-			_bufferSize(0) {
+			_numLits(0), _bufferSize(0) {
 		std::swap(in._clauses, _clauses);
-		std::swap(in._lits, _lits);
 	}
 
 	size_t numClauses() const {
@@ -43,16 +38,16 @@ public:
 	}
 
 	size_t numLits() const {
-		return _lits.size();
+		return _numLits;
 	}
 
 	Clause & getClause(const size_t & num) {
 		return _clauses[num];
 	}
 
-	Lit<LitVector> & getLit(const size_t & num) {
-		return _lits[num];
-	}
+   const Clause & getClause(const size_t & num) const {
+      return _clauses[num];
+   }
 
 	uint32_t countNumLitsInClause() const
 	{
@@ -63,9 +58,9 @@ public:
 	}
 
 private:
+	size_t _numLits;
 	std::string _file;
 	std::vector<Clause> _clauses;
-	std::vector<Lit> _lits;
 	size_t _bufferSize;
 
 	void readFromFile() {
@@ -80,8 +75,7 @@ private:
 		std::string tmp(&(buffer[6]));
 		std::stringstream ss(tmp);
 		int32_t intTmp;
-		ss >> intTmp;
-		_lits.resize(intTmp + 1);
+		ss >> _numLits;
 		ss >> intTmp;
 		_clauses.resize(intTmp);
 		ss.str("");

@@ -13,23 +13,23 @@
 
 struct Lit
 {
-    short memPos = 0;
-    size_t tokenNum;
-    const ClauseState * clauseState;
+   short memPos = 0;
+   size_t tokenNum;
+   const ClauseState * clauseState;
 
-    Lit()
-            : memPos(0),
-              tokenNum(0),
-              clauseState(nullptr)
-    {
-    }
+   Lit()
+         : memPos(0),
+           tokenNum(0),
+           clauseState(nullptr)
+   {
+   }
 
-    Lit(const short & memPos, const size_t & tokenNum, const ClauseState & clauseState)
-            : memPos(memPos),
-              tokenNum(tokenNum),
-              clauseState(&clauseState)
-    {
-    }
+   Lit(const short & memPos, const size_t & tokenNum, const ClauseState & clauseState)
+         : memPos(memPos),
+           tokenNum(tokenNum),
+           clauseState(&clauseState)
+   {
+   }
 };
 
 #endif /* LIT_HPP_ */
