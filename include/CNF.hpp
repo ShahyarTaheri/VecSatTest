@@ -65,6 +65,7 @@ private:
 
 	void readFromFile() {
 		std::ifstream ins;
+		std::cout << "Reading file " << _file << std::endl;
 		ins.open(_file.c_str());
 		char buffer[_bufferSize];
 		while (ins.good()) {
@@ -77,6 +78,7 @@ private:
 		int32_t intTmp;
 		ss >> _numLits;
 		ss >> intTmp;
+		std::cout << "NumLits: " << _numLits << std::endl << "NumClauses: " << intTmp << std::endl;
 		_clauses.resize(intTmp);
 		ss.str("");
 		size_t clauseNum = 0;

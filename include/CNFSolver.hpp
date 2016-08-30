@@ -44,7 +44,6 @@ class CNFSolver
       {
       }
 
-
    };
 
  public:
@@ -53,8 +52,11 @@ class CNFSolver
            _solutionFound(false),
            _cnf(&cnf),
            _backStep(false),
+           _printedEstimation(false),
            _zeroCounter(0),
+           _zeroFuture(10000000),
            _lowestBackstepLvl(std::numeric_limits<size_t>::max()),
+           _highestLvl(0),
            _startTime(0)
    {
       init();
@@ -93,6 +95,10 @@ class CNFSolver
       numBytes += (sizeof(uint32_t) + sizeof(Clause)) * _clauseStack.size() + _cnf->countNumLitsInClause() * sizeof(int32_t);
       numBytes += sizeof(Lit) * _cnf->numLits();
       std::cout << "Allocating not less than " << (double) numBytes / (1024 * 1024) << " MB" << std::endl;
+      std::cout << "Setting " << LitVector::maxNumSchroedinger() << " in one block" << std::endl;
+      for(size_t i=0;i<_tokenStack.size()-1;++i)
+         std::cout << i << ". " << _tokenStack[i+1].clauseState.posClause -_tokenStack[i].clauseState.posClause
+                   << " range (" << _tokenStack[i].clauseState.posClause << "," << _tokenStack[i+1].clauseState.posClause << ") to evaluate" << std::endl;
    }
 
  private:
@@ -106,15 +112,19 @@ class CNFSolver
 
    LitVecMemory<n, base_vec> _vecMem;
    bool _backStep;
+   bool _printedEstimation;
 
    size_t _zeroCounter;
+   size_t _zeroFuture;
    size_t _lowestBackstepLvl;
+   size_t _highestLvl;
    uint64_t _startTime;
 
    void setUpMemory()
    {
       _clauseStack.resize(_cnf->numClauses(), 0);
       _tokenStack.resize(std::ceil(((double) _cnf->numLits()) / LitVector::maxNumSchroedinger()) + 1);
+      std::cout << "NumTokens: " << _tokenStack.size() << std::endl;
       _lits.resize(_cnf->numLits() + 1);
    }
 
@@ -123,8 +133,8 @@ class CNFSolver
       for (size_t i = 0; i < _cnf->numClauses(); ++i)
          _clauseStack[i] = i;
 
-      //std::srand ( unsigned ( std::time(0) ) );
-      //random_shuffle(_clauseStack.begin(),_clauseStack.end());
+      std::srand ( unsigned ( std::time(0) ) );
+      random_shuffle(_clauseStack.begin(),_clauseStack.end());
    }
 
    void setUpLitOrder()
@@ -161,7 +171,7 @@ class CNFSolver
          maxClausesInStep = _clauseStack.size() - _tokenStack[_tokenStack.size() - 2].clauseState.posClause;
          maxIndex = _tokenStack.size() - 2;
       }
-      std::cout << "in " << maxIndex << ": need to evaluate " << maxClausesInStep << " clauses" << std::endl;
+      //std::cout << "in " << maxIndex << ": need to evaluate " << maxClausesInStep << " clauses" << std::endl;
       _tokenStack.back().clauseState.posClause = _clauseStack.size();
 
       _posInTokenStack = 0;
@@ -170,12 +180,11 @@ class CNFSolver
    bool solveStep()
    {
       bool res = true;
-      //if(_zeroCounter > 0)
-      //   return false;
-      if (_zeroCounter % 100000 == 0 && _zeroCounter > 0)
+      if (_zeroCounter  > _zeroFuture)
       {
+         _zeroFuture = _zeroCounter + 10000000000;
          std::cout << "Conflics per sec: " << (_zeroCounter / std::floor((double) (clock() - _startTime) / CLOCKS_PER_SEC)) << std::endl << "lowest backstep: "
-                   << _lowestBackstepLvl << std::endl;
+               << _lowestBackstepLvl << " highest: " << _highestLvl << std::endl;
       }
       if (!_backStep && evaluateClauses())
       {
@@ -216,14 +225,20 @@ class CNFSolver
          if (curValue != _vecMem.zero())
          {
             tmp = _vecMem.zero();
-            for (const int32_t & lit : _cnf->getClause(i).lits)
+            for (const int32_t & lit : _cnf->getClause(_clauseStack[i]).lits)
                tmp |= getValueOfLit(lit);
+            /*if (true)
+            {
+               for (const int32_t & lit : _cnf->getClause(i).lits)
+                  std::cout << "lit:" << lit << " tokenNum:" << _lits[std::abs(lit)].tokenNum << "mem:" << _lits[std::abs(lit)].memPos << std::endl;
             curValue ^= tmp;
+            }*/
+            //std::cout << "ones: " << curValue.countOnes() << std::endl;
          } else
             return false;
       }
 
-      return true;
+      return curValue != _vecMem.zero();
    }
 
    bool shiftLine()
@@ -242,12 +257,33 @@ class CNFSolver
 
    bool pushToken()
    {
+      //std::cout << "cur level: " << _posInTokenStack +1 << std::endl;
+      if(!_printedEstimation && _posInTokenStack == _tokenStack.size()-2)
+      {
+         long double numPos = 1;
+         for(size_t i=0;i<_tokenStack.size()-2;++i)
+         {
+            numPos *= std::max(1ul,_tokenStack[i].litState.countOnes());
+            std::cout << "num ones: " << std::max(1ul,_tokenStack[i].litState.countOnes()) << std::endl;
+         }
+         std::cout << "Num possibilitiers: " << numPos << std::endl;
+         std::cout << "This is " << 100.0*(((double)numPos)/ std::pow(2,_cnf->numLits())) << "% of a normal solver (" << std::pow(2,_cnf->numLits()) << ")" << std::endl;
+         _printedEstimation = true;
+      }
+      if(_highestLvl < _posInTokenStack+1)
+      {
+         _highestLvl= _posInTokenStack+1;
+      }
       return ++_posInTokenStack < _tokenStack.size() - 1;
    }
 
    bool popToken()
    {
-      _lowestBackstepLvl = std::min(_lowestBackstepLvl, _posInTokenStack);
+      if(_lowestBackstepLvl > _posInTokenStack)
+      {
+         _lowestBackstepLvl = std::min(_lowestBackstepLvl, _posInTokenStack);
+         std::cout << "Lowest level: " << _lowestBackstepLvl << " highest: " << _highestLvl << "\n";
+      }
       _tokenStack[_posInTokenStack].clauseState.posInVec = 0;
       if (_posInTokenStack == 0)
          return false;
@@ -264,11 +300,13 @@ class CNFSolver
       Lit & tmpRef = _lits[std::abs(in)];
       if (tmpRef.tokenNum < _posInTokenStack)
          return ((_vecMem[tmpRef.memPos].get(tmpRef.clauseState->posInVec)) ? _vecMem.zero() : _vecMem.one());
-      else
+      else if(tmpRef.tokenNum == _posInTokenStack)
       {
          int32_t index = ((in < 0) ? -tmpRef.memPos : tmpRef.memPos);
          return _vecMem[index];
       }
+      else
+         throw std::runtime_error("Lits are in a wrong order");
    }
 
    void optimizeClauseOrder(bool optimize = true)

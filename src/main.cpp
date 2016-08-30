@@ -13,7 +13,7 @@
 #include "../include/CNFSolver.hpp"
 
 typedef __m256d simd_type;
-#define NUM_VECS 2
+#define NUM_VECS 1
 
 int main(int argc, char * argv[])
 {

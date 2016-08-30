@@ -24,21 +24,29 @@ class LitVec
 
    LitVec()
    {
-
+      init();
    }
 
    LitVec(const LitVec<n, base_vec> & in)
    {
+      init();
       std::copy(in._vec, in._vec + n, _vec);
    }
 
    LitVec(LitVec<n, base_vec> && in)
    {
+      _vec=nullptr;
       std::swap(_vec, in._vec);
    }
 
    ~LitVec()
    {
+      if(_vec!=nullptr)
+         deallocateSimd(_vec);
+   }
+   void init()
+   {
+      _vec = allocateSimd<base_vec>(n);
    }
 
    bool operator!=(const LitVec<n, base_vec> & in) const
@@ -94,12 +102,21 @@ class LitVec
 
    bool get(const size_t & index) const
    {
-      return getSimd(_vec[index / sizeof(base_vec)], index % sizeof(base_vec));
+      return getSimd(_vec, index, n);
    }
 
    void set(const size_t & index, const bool & val)
    {
-      setSimd(_vec[index / sizeof(base_vec)], index % sizeof(base_vec), val);
+      setSimd(_vec, index,n, val);
+   }
+
+   size_t countOnes() const
+   {
+      size_t res = 0;
+      for(size_t i=0;i<size();++i)
+         if(get(i))
+            ++res;
+      return res;
    }
 
    static constexpr size_t size()
@@ -133,22 +150,25 @@ class LitVec
 
    void createSchroedMemory(const size_t & num)
    {
-      size_t changeEvery = std::pow(2, num + 1);
+      //std::cout << "create schroed " << num << std::endl;
+      size_t changeEvery = std::pow(2, num-1);
       size_t counter = 0;
       bool cur = false;
       for (size_t i = 0; i < size(); ++i)
       {
          set(i, cur);
+         //std::cout << cur << " ";
          if (++counter == changeEvery)
          {
             counter = 0;
-            cur = -cur;
+            cur = ((cur) ? false : true);
          }
       }
+      //std::cout << std::endl;
    }
 
  private:
-   base_vec _vec[n];
+   base_vec * _vec;
 
    static constexpr size_t _size = n * sizeof(base_vec)*8;
    static constexpr size_t _numSchroedinger = Log2(size());
