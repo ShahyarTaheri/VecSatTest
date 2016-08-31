@@ -141,13 +141,14 @@ class CNFSolver
    {
       size_t counter = 0;
       std::vector<bool> isSet(_cnf->numLits(), false);
-      size_t maxClausesInStep = 0;
-      size_t maxIndex = 0;
+      size_t litsTouched;
       for (size_t i = 0; i < _clauseStack.size(); ++i)
       {
          const Clause & clause = _cnf->getClause(_clauseStack[i]);
+         litsTouched = 0;
          for (size_t j = 0; j < clause.lits.size(); ++j)
          {
+             ++litsTouched;
             const uint32_t & litId = std::abs(clause.lits[j]);
             if (!isSet[litId])
             {
@@ -156,22 +157,11 @@ class CNFSolver
             }
             if (counter == LitVector::maxNumSchroedinger())
             {
-               if (_posInTokenStack > 0 && maxClausesInStep < i - _tokenStack[_posInTokenStack - 1].clauseState.posClause)
-               {
-                  maxClausesInStep = i - _tokenStack[_posInTokenStack - 1].clauseState.posClause;
-                  maxIndex = _posInTokenStack;
-               }
-               _tokenStack[++_posInTokenStack] = BranchToken(i + 1);
+               _tokenStack[++_posInTokenStack] = BranchToken((litsTouched == clause.lits.size()) ? i+1 : i);
                counter = 0;
             }
          }
       }
-      if (maxClausesInStep < _clauseStack.size() - _tokenStack[_tokenStack.size() - 2].clauseState.posClause)
-      {
-         maxClausesInStep = _clauseStack.size() - _tokenStack[_tokenStack.size() - 2].clauseState.posClause;
-         maxIndex = _tokenStack.size() - 2;
-      }
-      //std::cout << "in " << maxIndex << ": need to evaluate " << maxClausesInStep << " clauses" << std::endl;
       _tokenStack.back().clauseState.posClause = _clauseStack.size();
 
       _posInTokenStack = 0;
