@@ -229,10 +229,10 @@ bool getSimd(const simd_type * in, const size_t & index, const size_t & n)
    if (!GfastAccessInited)
    {
       GfastAccessArray = std::vector<std::array<size_t,2>>(n * sizeof(simd_type)*8);
-      for (size_t i = 0; i < n * sizeof(simd_type); ++i)
+      for (size_t i = 0; i < n * sizeof(simd_type)*8; ++i)
       {
-         GfastAccessArray[i][0] = index / (n * 64);
-         GfastAccessArray[i][1] = index % (n * 64);
+         GfastAccessArray[i][0] = i / (n * 64);
+         GfastAccessArray[i][1] = i % (n * 64);
       }
       GfastAccessInited = true;
    }

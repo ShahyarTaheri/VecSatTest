@@ -74,7 +74,7 @@ class CNFSolver
 
    void init()
    {
-      _vecMem.init();
+      _vecMem.init(_cnf->numLits());
       setUpMemory();
       setUpClauseOrder();
       setUpLitOrder();
@@ -96,9 +96,9 @@ class CNFSolver
       numBytes += sizeof(Lit) * _cnf->numLits();
       std::cout << "Allocating not less than " << (double) numBytes / (1024 * 1024) << " MB" << std::endl;
       std::cout << "Setting " << LitVector::maxNumSchroedinger() << " in one block" << std::endl;
-      for(size_t i=0;i<_tokenStack.size()-1;++i)
-         std::cout << i << ". " << _tokenStack[i+1].clauseState.posClause -_tokenStack[i].clauseState.posClause
-                   << " range (" << _tokenStack[i].clauseState.posClause << "," << _tokenStack[i+1].clauseState.posClause << ") to evaluate" << std::endl;
+      for (size_t i = 0; i < _tokenStack.size() - 1; ++i)
+         std::cout << i << ". " << _tokenStack[i + 1].clauseState.posClause - _tokenStack[i].clauseState.posClause << " range ("
+               << _tokenStack[i].clauseState.posClause << "," << _tokenStack[i + 1].clauseState.posClause << ") to evaluate" << std::endl;
    }
 
  private:
@@ -133,13 +133,16 @@ class CNFSolver
       for (size_t i = 0; i < _cnf->numClauses(); ++i)
          _clauseStack[i] = i;
 
-      std::srand ( unsigned ( std::time(0) ) );
+      unsigned seed = std::time(0);
+      seed = 1472635084;
+      std::cout << "seed = " << seed << std::endl;
+      std::srand ( seed );
       random_shuffle(_clauseStack.begin(),_clauseStack.end());
    }
 
    void setUpLitOrder()
    {
-      size_t counter = 0;
+      size_t schroedId = 0, setLits = 0;
       std::vector<bool> isSet(_cnf->numLits(), false);
       size_t litsTouched;
       for (size_t i = 0; i < _clauseStack.size(); ++i)
@@ -148,17 +151,21 @@ class CNFSolver
          litsTouched = 0;
          for (size_t j = 0; j < clause.lits.size(); ++j)
          {
-             ++litsTouched;
+            ++litsTouched;
             const uint32_t & litId = std::abs(clause.lits[j]);
             if (!isSet[litId])
             {
                isSet[litId] = true;
-               _lits[litId] = Lit(++counter, _posInTokenStack, _tokenStack[_posInTokenStack].clauseState);
+               if(setLits >= _cnf->numLits()-_vecMem.numAdditionals())
+                  _lits[litId] = Lit((++schroedId)+_vecMem.numAdditionals(), _posInTokenStack, _tokenStack[_posInTokenStack].clauseState);
+               else
+                  _lits[litId] = Lit(++schroedId, _posInTokenStack, _tokenStack[_posInTokenStack].clauseState);
+               ++setLits;
             }
-            if (counter == LitVector::maxNumSchroedinger())
+            if (schroedId == LitVector::maxNumSchroedinger())
             {
-               _tokenStack[++_posInTokenStack] = BranchToken((litsTouched == clause.lits.size()) ? i+1 : i);
-               counter = 0;
+               _tokenStack[++_posInTokenStack] = BranchToken((litsTouched == clause.lits.size()) ? i + 1 : i);
+               schroedId = 0;
             }
          }
       }
@@ -170,13 +177,13 @@ class CNFSolver
    bool solveStep()
    {
       bool res = true;
-      if (_zeroCounter  > _zeroFuture)
+      if (_zeroCounter > _zeroFuture)
       {
          _zeroFuture = _zeroCounter + 10000000000;
          std::cout << "Conflics per sec: " << (_zeroCounter / std::floor((double) (clock() - _startTime) / CLOCKS_PER_SEC)) << std::endl << "lowest backstep: "
                << _lowestBackstepLvl << " highest: " << _highestLvl << std::endl;
       }
-      if (!_backStep && evaluateClauses())
+      if (evaluateClauses())
       {
          // evaluate true:
          if (!pushToken())
@@ -187,19 +194,22 @@ class CNFSolver
          }
       } else
       {
-         _backStep = false;
          // evaluate false
-         if (!shiftLine())  // try get next line of token
+         bool unsat = false;
+         if (_posInTokenStack > 0)
          {
-            // no next line -> popToken
-            if (!popToken())
+            if (!shiftLine())  // try get next line of token
             {
-               // backstep not possible => unsat
-               res = false;
-               _solutionFound = false;
+               // no next line -> popToken
+               unsat = !popToken();
             }
+         } else
+            unsat = true;
+         if (unsat)
+         {
+            res = false;
+            _solutionFound = false;
          }
-
       }
 
       return res;
@@ -215,14 +225,16 @@ class CNFSolver
          if (curValue != _vecMem.zero())
          {
             tmp = _vecMem.zero();
-            for (const int32_t & lit : _cnf->getClause(_clauseStack[i]).lits)
+            const Clause & clause = _cnf->getClause(_clauseStack[i]);
+            for (const int32_t & lit : clause.lits)
                tmp |= getValueOfLit(lit);
-            /*if (true)
-            {
-               for (const int32_t & lit : _cnf->getClause(i).lits)
-                  std::cout << "lit:" << lit << " tokenNum:" << _lits[std::abs(lit)].tokenNum << "mem:" << _lits[std::abs(lit)].memPos << std::endl;
+
             curValue ^= tmp;
-            }*/
+            /*if (true)
+             {
+             for (const int32_t & lit : _cnf->getClause(i).lits)
+             std::cout << "lit:" << lit << " tokenNum:" << _lits[std::abs(lit)].tokenNum << "mem:" << _lits[std::abs(lit)].memPos << std::endl;
+             }*/
             //std::cout << "ones: " << curValue.countOnes() << std::endl;
          } else
             return false;
@@ -233,13 +245,13 @@ class CNFSolver
 
    bool shiftLine()
    {
-      ClauseState & clauseState = _tokenStack[_posInTokenStack].clauseState;
-      const auto & litVec = _tokenStack[_posInTokenStack].litState;
+      ClauseState & clauseState = _tokenStack[_posInTokenStack-1].clauseState;
+      const auto & litVec = _tokenStack[_posInTokenStack-1].litState;
 
       while (++clauseState.posInVec < LitVector::size() && !litVec.get(clauseState.posInVec))
          ++_zeroCounter;  // TODO more sophisticated approach possible O(VecSize) => O(log(VecSize)) => O(1)
 
-      if (clauseState.posInVec == LitVector::size())
+      if (clauseState.posInVec >= LitVector::size())
          return false;
       else
          return true;
@@ -247,55 +259,61 @@ class CNFSolver
 
    bool pushToken()
    {
-      //std::cout << "cur level: " << _posInTokenStack +1 << std::endl;
-      if(!_printedEstimation && _posInTokenStack == _tokenStack.size()-2)
+      // DEBUG foo
+      if (!_printedEstimation && _posInTokenStack == _tokenStack.size() - 2)
       {
          long double numPos = 1;
-         for(size_t i=0;i<_tokenStack.size()-2;++i)
+         for (size_t i = 0; i < _tokenStack.size() - 2; ++i)
          {
-            numPos *= std::max(1ul,_tokenStack[i].litState.countOnes());
-            std::cout << "num ones: " << std::max(1ul,_tokenStack[i].litState.countOnes()) << std::endl;
+            numPos *= std::max(1ul, _tokenStack[i].litState.countOnes());
+            std::cout << "num ones: " << std::max(1ul, _tokenStack[i].litState.countOnes()) << std::endl;
          }
          std::cout << "Num possibilitiers: " << numPos << std::endl;
-         std::cout << "This is " << 100.0*(((double)numPos)/ std::pow(2,_cnf->numLits())) << "% of a normal solver (" << std::pow(2,_cnf->numLits()) << ")" << std::endl;
+         std::cout << "This is " << 100.0 * (((double) numPos) / std::pow(2, _cnf->numLits())) << "% of a normal solver (" << std::pow(2, _cnf->numLits())
+               << ")" << std::endl;
          _printedEstimation = true;
       }
-      if(_highestLvl < _posInTokenStack+1)
+      if (_highestLvl < _posInTokenStack + 1)
       {
-         _highestLvl= _posInTokenStack+1;
+         _highestLvl = _posInTokenStack + 1;
       }
-      return ++_posInTokenStack < _tokenStack.size() - 1;
+      // DEBUG foo end
+
+      if(++_posInTokenStack < _tokenStack.size() - 1 && (_tokenStack[_posInTokenStack-1].litState.get(0) || shiftLine()))
+      {
+         _tokenStack[_posInTokenStack].clauseState.posInVec = 0;
+         return true;
+      }
+      else
+         return false;
    }
 
    bool popToken()
    {
-      if(_lowestBackstepLvl > _posInTokenStack)
+      if (_lowestBackstepLvl > _posInTokenStack)
       {
          _lowestBackstepLvl = std::min(_lowestBackstepLvl, _posInTokenStack);
          std::cout << "Lowest level: " << _lowestBackstepLvl << " highest: " << _highestLvl << "\n";
       }
-      _tokenStack[_posInTokenStack].clauseState.posInVec = 0;
-      if (_posInTokenStack == 0)
-         return false;
-      else
+      bool foundToken = false;
+      while (!foundToken && _posInTokenStack > 0)
       {
+         foundToken = shiftLine();
          --_posInTokenStack;
-         _backStep = true;
-         return true;
       }
+      return foundToken;
    }
 
    const LitVector & getValueOfLit(const int32_t & in)
    {
       Lit & tmpRef = _lits[std::abs(in)];
+      int32_t index = ((in < 0) ? -tmpRef.memPos : tmpRef.memPos);
       if (tmpRef.tokenNum < _posInTokenStack)
-         return ((_vecMem[tmpRef.memPos].get(tmpRef.clauseState->posInVec)) ? _vecMem.zero() : _vecMem.one());
-      else if(tmpRef.tokenNum == _posInTokenStack)
+         return ((_vecMem[index].get(tmpRef.clauseState->posInVec)) ? _vecMem.one() : _vecMem.zero());
+      else if (tmpRef.tokenNum == _posInTokenStack)
       {
-         int32_t index = ((in < 0) ? -tmpRef.memPos : tmpRef.memPos);
          return _vecMem[index];
-      }
-      else
+      } else
          throw std::runtime_error("Lits are in a wrong order");
    }
 

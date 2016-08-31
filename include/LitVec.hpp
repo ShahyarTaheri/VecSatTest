@@ -102,7 +102,8 @@ class LitVec
 
    bool get(const size_t & index) const
    {
-      return getSimd(_vec, index, n);
+      bool res = getSimd(_vec, index, n);
+      return res;
    }
 
    void set(const size_t & index, const bool & val)

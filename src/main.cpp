@@ -12,11 +12,16 @@
 #include "../include/CNF.hpp"
 #include "../include/CNFSolver.hpp"
 
+#include "../include/Test/TestLitVec.hpp"
+
 typedef __m256d simd_type;
 #define NUM_VECS 1
 
 int main(int argc, char * argv[])
 {
+   TestLitVec<NUM_VECS,simd_type> test;
+   if(!test.test())
+      throw std::runtime_error("Simd implementation isn't working.");
    if (argc < 2)
    {
       std::cout << "No CNF-file passed.\n";
