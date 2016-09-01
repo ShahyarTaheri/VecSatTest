@@ -61,7 +61,7 @@ private:
 	size_t _numLits;
 	std::string _file;
 	std::vector<Clause> _clauses;
-	static constexpr size_t _bufferSize = 1024;
+	static constexpr size_t _bufferSize = 2048;
 
 	void readFromFile() {
 		std::ifstream ins;
