@@ -108,7 +108,7 @@ class LitVec
 
    void set(const size_t & index, const bool & val)
    {
-      setSimd(_vec, index,n, val);
+      setSimd<base_vec>(_vec, index,n, val);
    }
 
    size_t countOnes() const
@@ -171,7 +171,7 @@ class LitVec
  private:
    base_vec * _vec;
 
-   static constexpr size_t _size = n * sizeof(base_vec)*8;
+   static constexpr size_t _size = n * simdSize<base_vec>();
    static constexpr size_t _numSchroedinger = Log2(size());
 };
 

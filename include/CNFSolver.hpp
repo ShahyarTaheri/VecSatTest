@@ -299,7 +299,8 @@ class CNFSolver
       while (!foundToken && _posInTokenStack > 0)
       {
          foundToken = shiftLine();
-         --_posInTokenStack;
+         if(!foundToken)
+            --_posInTokenStack;
       }
       return foundToken;
    }

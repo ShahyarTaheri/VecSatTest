@@ -84,6 +84,13 @@ class TestLitVec
             btest = false;
          if(-schroed != _mem[-i])
             btest = false;
+
+         if(!btest)
+         {
+            std::cout << "schroed creation is buggy." << std::endl;
+            return false;
+         }
+
       }
       return btest;
    }

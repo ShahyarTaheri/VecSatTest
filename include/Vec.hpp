@@ -53,6 +53,41 @@ void neq(simd_type & out)
 }
 
 /////////////////////////////////
+////////////// bool//////////////
+/////////////////////////////////
+
+template<>
+bool zeroSimd(const bool &)
+{
+   return false;
+}
+
+template<>
+bool oneSimd(const bool &)
+{
+   return true;
+}
+
+template<>
+void andAssign(bool & out, const bool & in)
+{
+   out = out && in;
+}
+
+template<>
+void orAssign(bool & out, const bool & in)
+{
+   out = out || in;
+}
+
+template<>
+void neq(bool & out)
+{
+   out = !out;
+}
+
+
+/////////////////////////////////
 ////////////// MMX //////////////
 /////////////////////////////////
 
@@ -269,6 +304,59 @@ bool not_equal(const simd_type & in1, const simd_type & in2)
       if (p1[i] != p2[i])
          return true;
    return false;
+}
+
+template<typename simd_type>
+constexpr size_t simdSize()
+{
+   return sizeof(simd_type)*8;
+}
+
+/////////////////////////////////
+//////// Template (Bool)/////////
+/////////////////////////////////
+
+
+template<>
+bool* allocateSimd(const size_t & n)
+{
+   return new bool[n];
+}
+
+template<>
+void deallocateSimd(bool * vec)
+{
+   delete[] vec;
+}
+
+template<>
+bool getSimd(const bool * in, const size_t & index, const size_t & n)
+{
+   return in[index];
+}
+
+template<>
+void setSimd(bool * in, const size_t & index, const size_t & n, const bool & val)
+{
+   in[index] = val;
+}
+
+template<>
+void assign(bool & out, const bool & in)
+{
+   out = in;
+}
+
+template<>
+bool not_equal(const bool & in1, const bool & in2)
+{
+   return in1 != in2;
+}
+
+template<>
+constexpr size_t simdSize<bool>()
+{
+   return 1;
 }
 
 #endif /* VEC_HPP_ */

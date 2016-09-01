@@ -16,8 +16,8 @@ class LitVecMemory
  public:
    LitVecMemory()
          : _schroedShift(0),
-           _allLitVecs(nullptr),
-           _numAdditionals(0)
+           _numAdditionals(0),
+           _allLitVecs(nullptr)
    {
    }
 

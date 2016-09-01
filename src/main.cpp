@@ -14,8 +14,11 @@
 
 #include "../include/Test/TestLitVec.hpp"
 
-typedef __m256d simd_type;
-#define NUM_VECS 1
+typedef bool simd_type;
+//typedef __m64 simd_type;
+//typedef __m128d simd_type;
+//typedef __m256d simd_type;
+#define NUM_VECS 8
 
 int main(int argc, char * argv[])
 {
