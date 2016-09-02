@@ -18,6 +18,8 @@
 #include <cstdint>
 #include <array>
 
+//#include <bitset>
+
 /////////////////////////////////
 //////////// Template ///////////
 /////////////////////////////////
@@ -85,7 +87,6 @@ void neq(bool & out)
 {
    out = !out;
 }
-
 
 /////////////////////////////////
 ////////////// MMX //////////////
@@ -227,9 +228,10 @@ void neq(__m256d & out)
 /////////////////////////////////
 //////////// Template ///////////
 /////////////////////////////////
+typedef uint32_t shift_type;
 bool GfastAccessInited = false;
 
-std::vector<std::array<size_t,2>> GfastAccessArray;
+std::vector<std::array<shift_type, 2>> GfastAccessArray;
 
 template<typename simd_type>
 simd_type* allocateSimd(const size_t & n)
@@ -244,48 +246,62 @@ void deallocateSimd(simd_type * vec)
 }
 
 template<typename simd_type>
-void setFalse64(simd_type * in, const size_t & posArr, const size_t & posVec)
+void setFalse(simd_type * in, const size_t & posArr, const size_t & posVec)
 {
-   uint64_t * p = reinterpret_cast<uint64_t*>(in);
+   shift_type * p = reinterpret_cast<shift_type*>(in);
    p[posArr] &= ~(1 << posVec);
 }
 
 template<typename simd_type>
-void setTrue64(simd_type * in, const size_t & posArr, const size_t & posVec)
+void setTrue(simd_type * in, const size_t & posArr, const size_t & posVec)
 {
-   uint64_t * p = reinterpret_cast<uint64_t*>(in);
+   shift_type * p = reinterpret_cast<shift_type*>(in);
    p[posArr] |= 1 << posVec;
 }
 
 template<typename simd_type>
 bool getSimd(const simd_type * in, const size_t & index, const size_t & n)
 {
-   const uint64_t * p = reinterpret_cast<const uint64_t*>(in);
+   const shift_type * p = reinterpret_cast<const shift_type*>(in);
    if (!GfastAccessInited)
    {
-      GfastAccessArray = std::vector<std::array<size_t,2>>(n * sizeof(simd_type)*8);
-      for (size_t i = 0; i < n * sizeof(simd_type)*8; ++i)
+      GfastAccessArray = std::vector<std::array<shift_type, 2>>(n * sizeof(simd_type) * 8);
+      for (size_t i = 0; i < n * sizeof(simd_type) * 8; ++i)
       {
-         GfastAccessArray[i][0] = i / (n * 64);
-         GfastAccessArray[i][1] = i % (n * 64);
+         GfastAccessArray[i][0] = i / (sizeof(shift_type) * 8);  //i / (n * 64);
+         GfastAccessArray[i][1] = i % (sizeof(shift_type) * 8);  //i / (n * 64);
       }
       GfastAccessInited = true;
    }
-   size_t posArr = GfastAccessArray[index][0];
-   size_t posVec = GfastAccessArray[index][1];
+   shift_type posArr = GfastAccessArray[index][0];
+   shift_type posVec = GfastAccessArray[index][1];
 
-   return (p[posArr] >> posVec) & 1;
+   return p[posArr] & (1 << posVec);
+   //return (p[posArr] >> posVec) & 1;
+   //std::bitset<sizeof(shift_type)*8> bset(p[posArr]);
+   //std::cout << "Bitset: " << bset << "\n";
+   //return bset[posVec];
 }
 
 template<typename simd_type>
 void setSimd(simd_type * in, const size_t & index, const size_t & n, const bool & val)
 {
-   size_t posArr = index / (n * 64);
-   size_t posVec = index % (n * 64);
+   if (!GfastAccessInited)
+   {
+      GfastAccessArray = std::vector<std::array<shift_type, 2>>(n * sizeof(simd_type) * 8);
+      for (size_t i = 0; i < n * sizeof(simd_type) * 8; ++i)
+      {
+         GfastAccessArray[i][0] = i / (sizeof(shift_type) * 8);  //i / (n * 64);
+         GfastAccessArray[i][1] = i % (sizeof(shift_type) * 8);  //i / (n * 64);
+      }
+      GfastAccessInited = true;
+   }
+   shift_type posArr = GfastAccessArray[index][0];
+   shift_type posVec = GfastAccessArray[index][1];
    if (val)
-      setTrue64(in, posArr, posVec);
+      setTrue(in, posArr, posVec);
    else
-      setFalse64(in, posArr, posVec);
+      setFalse(in, posArr, posVec);
 }
 
 template<typename simd_type>
@@ -309,13 +325,12 @@ bool not_equal(const simd_type & in1, const simd_type & in2)
 template<typename simd_type>
 constexpr size_t simdSize()
 {
-   return sizeof(simd_type)*8;
+   return sizeof(simd_type) * 8;
 }
 
 /////////////////////////////////
 //////// Template (Bool)/////////
 /////////////////////////////////
-
 
 template<>
 bool* allocateSimd(const size_t & n)

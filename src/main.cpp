@@ -18,7 +18,7 @@
 //typedef __m64 simd_type;
 //typedef __m128d simd_type;
 typedef __m256d simd_type;
-#define NUM_VECS 8
+#define NUM_VECS 1
 
 int main(int argc, char * argv[])
 {
